@@ -1,0 +1,104 @@
+1) CREATE TRIGGER updateDate
+       AFTER INSERT ON orders
+BEGIN
+    UPDATE orders
+       SET o_orderdate = DATETIME( 'NOW' )
+     WHERE orders.o_orderkey = NEW.o_orderkey;
+END;
+
+
+2) CREATE TRIGGER negativeWarn
+       AFTER UPDATE ON customer
+BEGIN
+    UPDATE customer
+       SET c_comment = 'NEGATIVE BALANCE WARNING!'
+     WHERE c_acctbal < 0 
+           AND
+           customer.c_comment = NEW.c_comment;
+END;
+
+CREATE TRIGGER removeWarn
+       AFTER UPDATE ON customer
+BEGIN
+    UPDATE customer
+       SET c_comment = ' '
+     WHERE c_accbal > 0 
+           AND
+           customer.c_comment = NEW.c_comment;
+END;
+3) CREATE TRIGGER orderInsert
+       AFTER INSERT ON lineitem
+BEGIN
+    UPDATE orders
+       SET o_orderpriority = '2-HIGH'
+     WHERE orders.o_orderkey = OLD.l_orderkey;
+END;
+
+CREATE TRIGGER orderDelete
+       AFTER DELETE ON lineitem
+BEGIN
+    UPDATE orders
+       SET o_orderpriority = '2-HIGH'
+     WHERE orders.o_orderkey = OLD.l_orderkey;
+END;
+
+
+
+4) CREATE TABLE orderlog ( 
+    t_logkey       INTEGER          PRIMARY KEY,
+    t_commandname  VARCHAR( 25 ),
+    t_commanddate  DATE,
+    t_orderkey     INTEGER          NOT NULL,
+    t_totalprcenew DECIMAL( 8, 2 )  NOT NULL 
+);
+
+CREATE TRIGGER logInsert
+       AFTER INSERT ON orders
+BEGIN
+    INSERT INTO orderlog ( 
+        t_commandname,
+        t_commanddate,
+        t_orderkey,
+        t_totalprcenew 
+    ) 
+    VALUES ( 
+        'INSERT',
+        DATETIME( 'NOW' ),
+        NEW.o_orderkey,
+        NEW.o_totalprice 
+    );
+END;
+
+CREATE TRIGGER logDelete
+       AFTER INSERT ON orders
+BEGIN
+    INSERT INTO orderlog ( 
+        t_commandname,
+        t_commanddate,
+        t_orderkey,
+        t_totalprcenew 
+    ) 
+    VALUES ( 
+        'DELETE',
+        DATETIME( 'NOW' ),
+        OLD.o_orderkey,
+        0 
+    );
+END;
+
+CREATE TRIGGER logUpdate
+       AFTER INSERT ON orders
+BEGIN
+    INSERT INTO orderlog ( 
+        t_commandname,
+        t_commanddate,
+        t_orderkey,
+        t_totalprcenew 
+    ) 
+    VALUES ( 
+        'UPDATE',
+        DATETIME( 'NOW' ),
+        NEW.o_orderkey,
+        NEW.o_totalprice 
+    );
+END;

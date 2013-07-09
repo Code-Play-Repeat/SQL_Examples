@@ -1,0 +1,215 @@
+1) SELECT l_quantity
+  FROM lineitem
+ WHERE l_quantity > 5
+ ORDER BY l_quantity ASC;
+ 
+ average execution time = 0.143216714 second(s)
+
+2) CREATE INDEX lquantityIndex ON lineitem ( 
+    l_quantity 
+);
+
+ average execution time = 0.001464 second(s)
+ 
+ difference  = 0.143216714-0.001464 = 0.141752714 second(s)
+ 
+It takes 0.141752714 second(s) longer to run the query without indexing
+
+3) SELECT l_quantity
+  FROM lineitem
+ WHERE l_quantity > 5;
+
+ average execution time = 0.001461857 second(s)
+ 
+ Difference between 2) and 3) = 0.001464-0.001461857 = 2.14286E-06 second(s) is very small
+ Difference between 1) and 3) = 0.143216714 - 0.001461857 = 0.141754857 second(s)
+ Now the difference between 1) and 3) is pretty big and this may be due to it takes time to
+ order it first. It also can be a result of creating the index and not removing it 
+ when running the query without the order by. Essentially the indexing can be considered doing the same thing
+ as the ordered by so it appears to be running faster but when suming up the indexing and the query without the order by,
+ the total time should be the same as just running the query with the order by.
+ 
+4) INSERT INTO lineitem ( 
+    l_orderkey,
+    l_partkey,
+    l_suppkey,
+    l_linenumber,
+    l_quantity,
+    l_extendedprice,
+    l_discount,
+    l_tax,
+    l_returnflag,
+    l_linestatus,
+    l_shipdate,
+    l_commitdate,
+    l_receiptdate,
+    l_shipinstruct,
+    l_shipmode,
+    l_comment 
+) 
+VALUES ( 
+    10,
+    100,
+    51,
+    2,
+    17,
+    14806.2,
+    0.04,
+    0.02,
+    'N',
+    'F',
+    '1996 - 03 - 13',
+    '1996 - 02 - 12',
+    '1996 - 03 - 22',
+    'DELIVER IN PERSON',
+    'MAIL',
+    'nal foxes wake.' 
+);
+
+
+UPDATE lineitem
+   SET l_orderkey = 20,
+       l_partkey = 200,
+       l_suppkey = 52,
+       l_linenumber = 1,
+       l_quantity = 18,
+       l_extendedprice = 2500.3,
+       l_discount = 0.10,
+       l_tax = 0.05,
+       l_returnflag = 'N',
+       l_linestatus = 'O',
+       l_shipdate = '1994 - 04 - 13',
+       l_commitdate = '1994 - 03 - 12',
+       l_receiptdate = '1994 - 04 - 22',
+       l_shipinstruct = 'TAKE BACK RETURN',
+       l_shipmode = 'TRUCK',
+       l_comment = 'y. fluffily pending d'
+ WHERE l_orderkey = 10 
+       AND
+       l_partkey = 100 
+       AND
+       l_suppkey = 51 
+       AND
+       l_linenumber = 2 
+       AND
+       l_quantity = 17 
+       AND
+       l_extendedprice = 14806.2 
+       AND
+       l_discount = 0.04 
+       AND
+       l_tax = 0.02 
+       AND
+       l_returnflag = 'N' 
+       AND
+       l_linestatus = 'F' 
+       AND
+       l_shipdate = '1996 - 03 - 13' 
+       AND
+       l_commitdate = '1996 - 02 - 12'
+       AND
+       l_receiptdate = '1996 - 03 - 22' 
+       AND
+       l_shipinstruct = 'DELIVER IN PERSON' 
+       AND
+       l_shipmode = 'MAIL' 
+       AND
+       l_comment = 'nal foxes wake.';
+
+before index average execution time:
+Insert: 0.001480429 second(s)
+Update: 0.048321857 second(s)
+
+after index average execution time:
+Insert: 0.001474571 second(s)
+Update: 0.007304143 second(s)
+
+For updates the time increased significantly compared to non indexed updates.
+A possible reason for this is updates require a lookup of the table to find
+the values that correspond to the where condition of the update and require more time.
+
+The inserts weren't affected by the indexing at all and this could be due to
+that inserts don't require a table lookup before inserting the values into the table.
+At most they are inserting a new row to the end of a table which doesn't require much 
+effort to find on the database part.
+
+So the indexed inserts and updates are faster but variable considerably
+when taking into account the type of operation such as inserts vs. updates.
+
+Inserts in these cases are both faster than updates. The indexed updates almost
+matched the speed of the inserts but were still off by a couple of nano seconds.
+
+5) SELECT l_shipdate,
+       l_quantity
+  FROM lineitem, 
+       orders, 
+       customer
+ WHERE c_name = 'Customer#000000016' 
+       AND
+       o_custkey = c_custkey 
+       AND
+       o_orderkey = l_orderkey;
+
+before index:
+average execution time = 0.265785571 second(s)
+
+CREATE INDEX accountBal ON supplier ( 
+    s_acctbal 
+);
+
+after index:
+average execution time = 0.263156286 second(s)
+
+difference between no index and index:
+difference = 0.265785571 - 0.263156286 = 0.002629286 second(s)
+
+So it took 0.002629286 second(s) more to perform the query without indexing.
+This isn't a very high difference in execution times partially because the index used
+did not apply directly to the query being performed. This is because the query wasn't looking
+in the s_acctbal attribute to form the results of the query. It is also the case that the supplier table
+is not involved with this query at all. So any improvemens with the index
+was merely more by chance than a direct cause of using the s_acctbal as an index.
+
+6) SELECT o_orderkey,
+       l_discount
+  FROM orders, 
+       lineitem
+ WHERE o_orderkey = l_orderkey 
+       AND
+       l_discount >  ( 
+           SELECT avg( l_discount )
+             FROM lineitem 
+       ) 
+       
+       AND
+       o_orderdate >= '1993-08-01' 
+       AND
+       o_orderdate <= '1993-08-31';
+
+before indexing:
+average execution time = 0.235774143 second(s)
+
+CREATE INDEX OorderKey ON orders ( 
+    o_orderkey 
+);
+
+CREATE INDEX LorderKey ON lineitem ( 
+    l_orderkey 
+);
+
+CREATE INDEX discount ON lineitem ( 
+    l_discount 
+);
+
+CREATE INDEX oderdate ON orders ( 
+    o_orderdate 
+);
+
+after indexing:
+average execution time = 0.043349429 second(s)
+
+
+difference between before and after indexing:
+difference = 0.235774143 - 0.043349429 = 0.192424714 second(s)
+
+It took 0.192424714 second(s) more to run the query without the four indexes that I added to improve the runtime of the query.
