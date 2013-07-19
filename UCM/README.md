@@ -1,5 +1,5 @@
 UCM CSE 111 Database Systems SQL Labs
-==============================
+=====================================
 
 + Contained within this folder are all the SQL queries/code created for CSE 111 Database Systems class.
 + The text files contain the queries and their results while the pdfs contain the explanations of the queries and their requirements.
